@@ -85,11 +85,56 @@ static void check_funclist(T_funclist funclist) {
 
 static void check_func(T_func func)
 {
-    while( NULL != funclist )
+    T_paramlist parameterList;
+    T_typelist parameterTypes;
+    
+    fprintf( stderr, "check_func\n" );
+
+    if( func->type->kind != E_functiontype )
     {
-        check_func( funclist->func );
-        funclist = funclist->tail;
+        type_error("not declared as a function" );
     }
+    if( lookup( current_scope->table, func->ident ) != NULL )
+    {
+        type_error("function is already defined in current scope" );
+    }
+
+    insert( current_scope->table, func->ident, func->type );
+
+    current_scope = create_scope( current_scope );
+
+    parameterList = func->paramlist;
+    parameterTypes = func->type->functiontype.paramtypes;
+
+    while( parameterList != NULL && parameterTypes != NULL )
+    {
+        insert( current_scope->table, parameterList->ident, parameterTypes->type );
+
+        parameterTypes = parameterTypes->tail;
+        parameterList = parameterList->tail;
+    }
+
+    if( parameterList != NULL || parameterTypes != NULL )
+    {
+        type_error("the number of parameters must match the number of function parameter types");
+    }
+
+    check_decllist( func->decllist );
+    check_stmtlist( func->stmtlist );
+    check_expr( func->returnexpr );
+
+    if( ! compare_types( func->type->functiontype.returntype, func->returnexpr->type ) )
+    {
+        type_error("function return type does not match return expression type" );
+    }
+
+    T_scope parent_scope = current_scope->parent;
+
+    destroy_scope( current_scope );
+    current_scope = parent_scope;
+    
+
+    
 }
 
 // GIVEN
